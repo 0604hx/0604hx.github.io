@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=6.3.0" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.3.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.3.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.3.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.3.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '6.3.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="随着 Spring Boot 的流行，越来越多开发者选择使用Spring Boot来发布Web应用。不同于传统的War包发布，Spring Boot 把整个项目打包成一个可运行的Jar包（即所谓的Flat Jar），导致了这个Jar包很大（通常有40M+）。如今迭代发布时常有的事情，每次都上传一个如此庞大的文件，会浪费很多时间。下面就以一个小项目为例，简述小弟所用的瘦身方案。当然如果是内网发布或者">
+<meta name="keywords" content="SpringBoot,Release">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SpringBoot: 迭代发布下的Jar瘦身实践">
+<meta property="og:url" content="https://0604hx.github.io/2018/06/26/spring-boot-iterative-release-with-thin-jar/index.html">
+<meta property="og:site_name" content="集成显卡">
+<meta property="og:description" content="随着 Spring Boot 的流行，越来越多开发者选择使用Spring Boot来发布Web应用。不同于传统的War包发布，Spring Boot 把整个项目打包成一个可运行的Jar包（即所谓的Flat Jar），导致了这个Jar包很大（通常有40M+）。如今迭代发布时常有的事情，每次都上传一个如此庞大的文件，会浪费很多时间。下面就以一个小项目为例，简述小弟所用的瘦身方案。当然如果是内网发布或者">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://nerve-images.oss-cn-shenzhen.aliyuncs.com/github-blog/spring-boot-iterative-release/20170107095138803.png">
+<meta property="og:image" content="https://nerve-images.oss-cn-shenzhen.aliyuncs.com/github-blog/spring-boot-iterative-release/20170107103809887.png">
+<meta property="og:image" content="https://nerve-images.oss-cn-shenzhen.aliyuncs.com/github-blog/spring-boot-iterative-release/20170107132421135.png">
+<meta property="og:image" content="https://nerve-images.oss-cn-shenzhen.aliyuncs.com/github-blog/spring-boot-iterative-release/20170107132617667.png">
+<meta property="og:image" content="https://nerve-images.oss-cn-shenzhen.aliyuncs.com/github-blog/spring-boot-iterative-release/20170107154426390.png">
+<meta property="og:updated_time" content="2018-06-26T09:43:58.187Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="SpringBoot: 迭代发布下的Jar瘦身实践">
+<meta name="twitter:description" content="随着 Spring Boot 的流行，越来越多开发者选择使用Spring Boot来发布Web应用。不同于传统的War包发布，Spring Boot 把整个项目打包成一个可运行的Jar包（即所谓的Flat Jar），导致了这个Jar包很大（通常有40M+）。如今迭代发布时常有的事情，每次都上传一个如此庞大的文件，会浪费很多时间。下面就以一个小项目为例，简述小弟所用的瘦身方案。当然如果是内网发布或者">
+<meta name="twitter:image" content="https://nerve-images.oss-cn-shenzhen.aliyuncs.com/github-blog/spring-boot-iterative-release/20170107095138803.png">
+
+
+
+
+
+
+  <link rel="canonical" href="https://0604hx.github.io/2018/06/26/spring-boot-iterative-release-with-thin-jar/"/>
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>SpringBoot: 迭代发布下的Jar瘦身实践 | 集成显卡</title>
+  
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="en">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">集成显卡</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+    <a href="/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-home"></i> <br />Home</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+    <a href="/archives/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />Archives</a>
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+    <div class="reading-progress-bar"></div>
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://0604hx.github.io/2018/06/26/spring-boot-iterative-release-with-thin-jar/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="0604hx">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="集成显卡">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">SpringBoot: 迭代发布下的Jar瘦身实践
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+
+              
+                
+              
+
+              <time title="Created: 2018-06-26 15:41:12 / Modified: 17:43:58" itemprop="dateCreated datePublished" datetime="2018-06-26T15:41:12+08:00">2018-06-26</time>
+            
+
+            
+              
+
+              
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="post-meta-item-icon"
+            >
+            <i class="fa fa-eye"></i>
+             Views:  
+            <span class="busuanzi-value" id="busuanzi_value_page_pv" ></span>
+            </span>
+          
+
+          
+            <div class="post-symbolscount">
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">Symbols count in article: </span>
+                
+                <span title="Symbols count in article">5.9k</span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">Reading time &asymp;</span>
+                
+                <span title="Reading time">5 mins.</span>
+              
+            </div>
+          
+
+          
+              <div class="post-description">随着 Spring Boot 的流行，越来越多开发者选择使用Spring Boot来发布Web应用。不同于传统的War包发布，Spring Boot 把整个项目打包成一个可运行的Jar包（即所谓的Flat Jar），导致了这个Jar包很大（通常有40M+）。如今迭代发布时常有的事情，每次都上传一个如此庞大的文件，会浪费很多时间。<br><br>下面就以一个小项目为例，简述小弟所用的瘦身方案。当然如果是内网发布或者你用的宽带异常给力，瘦身就没有多大意义了。</div>
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="项目简介"><a href="#项目简介" class="headerlink" title="项目简介"></a>项目简介</h1><p>新建一个练习用的项目，其结构如下<br><img src="https://nerve-images.oss-cn-shenzhen.aliyuncs.com/github-blog/spring-boot-iterative-release/20170107095138803.png" alt="这里写图片描述"></p>
+<ol>
+<li><code>ht-cdn</code>存放的是静态资源（如第三方js、css、images等）</li>
+<li><code>ht-domain</code>项目中的数据实体定义</li>
+<li><code>ht-repository</code>数据层接口及实现</li>
+<li><code>ht-service</code>业务逻辑接口及实现</li>
+<li><code>ht-ui-web</code>Web管理</li>
+</ol>
+<p>其中<code>ht-ui-web</code>依赖于<code>ht-domain</code>、<code>ht-repository</code>、<code>ht-service</code>，实现了一个简单的<code>GetMapping</code>。</p>
+<p>接着打包项目，整个jar包24M这样<br><img src="https://nerve-images.oss-cn-shenzhen.aliyuncs.com/github-blog/spring-boot-iterative-release/20170107103809887.png" alt="这里写图片描述"></p>
+<h1 id="瘦身准备"><a href="#瘦身准备" class="headerlink" title="瘦身准备"></a>瘦身准备</h1><p>首先我们要对Jar包有一个初步认识，它的内部结构如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">example.jar</span><br><span class="line"> |</span><br><span class="line"> +-META-INF</span><br><span class="line"> |  +-MANIFEST.MF</span><br><span class="line"> +-org</span><br><span class="line"> |  +-springframework</span><br><span class="line"> |     +-boot</span><br><span class="line"> |        +-loader</span><br><span class="line"> |           +-&lt;spring boot loader classes&gt;</span><br><span class="line"> +-BOOT-INF</span><br><span class="line">    +-classes</span><br><span class="line">    |  +-mycompany</span><br><span class="line">    |     +-project</span><br><span class="line">    |        +-YourClasses.class</span><br><span class="line">    +-lib</span><br><span class="line">       +-dependency1.jar</span><br><span class="line">       +-dependency2.jar</span><br></pre></td></tr></table></figure>
+<p>运行该Jar时默认从<code>BOOT-INF/classes</code>加载class，从<code>BOOT-INF/lib</code>加载所依赖的Jar包。如果想要加入外部的依赖Jar，可以通过设置环境变量<code>LOADER_PATH</code>来实现。</p>
+<p>如此一来，就可以确认我们的思路了：</p>
+<ol>
+<li>把那些不变的依赖Jar包（比如spring依赖、数据库Driver等，这些在不升级版本的情况下是不会更新的）从Flat Jar中抽离到单独的目录，如libs</li>
+<li>在启动Jar时，设置<code>LOADER_PATH</code>使用上一步的libs</li>
+</ol>
+<p>这样，我们最终打包的jar包体积就大大减少，每次迭代后只需要更新这个精简版的Jar即可。</p>
+<h1 id="具体步骤"><a href="#具体步骤" class="headerlink" title="具体步骤"></a>具体步骤</h1><h2 id="打包时瘦身"><a href="#打包时瘦身" class="headerlink" title="打包时瘦身"></a>打包时瘦身</h2><p>通常我们是用<code>spring-boot-maven-plugin</code>进行打包，通过阅读文档发现可以通过配置使得该插件在打包时忽略特定的依赖，文档在<a href="https://docs.spring.io/spring-boot/docs/current/maven-plugin/examples/exclude-dependency.html" target="_blank" rel="noopener">spring-boot-maven-plugin</a>。</p>
+<p>首先备份一下原先的依赖：编译打包成Flat Jar，然后将<code>BOOT-INF/lib</code>下的除去<code>ht-*</code>相关的jar文件全部解压出来，另存到<code>libs</code>目录下。</p>
+<p>接着修改<code>pom.xml</code>配置如下</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">build</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">plugins</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">                <span class="tag">&lt;<span class="name">layout</span>&gt;</span>ZIP<span class="tag">&lt;/<span class="name">layout</span>&gt;</span></span><br><span class="line">                <span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">                    这里可以使用 </span></span><br><span class="line"><span class="comment">                    excludeGroupIds 去除在生产环境中不变的依赖</span></span><br><span class="line"><span class="comment">                    includes        保留打包到 jar 的依赖（通常是项目中的子模块）</span></span><br><span class="line"><span class="comment">                --&gt;</span></span><br><span class="line">                <span class="comment">&lt;!-- &lt;excludeGroupIds&gt;</span></span><br><span class="line"><span class="comment">                    org.springframework.boot,</span></span><br><span class="line"><span class="comment">                    org.springframework,</span></span><br><span class="line"><span class="comment">                    org.springframework.data,</span></span><br><span class="line"><span class="comment">                    org.mongodb,</span></span><br><span class="line"><span class="comment">                    com.github.0604hx,</span></span><br><span class="line"><span class="comment">                    com.fasterxml.jackson.core,</span></span><br><span class="line"><span class="comment">                    commons-beanutils,</span></span><br><span class="line"><span class="comment">                    commons-codec,</span></span><br><span class="line"><span class="comment">                    org.apache.commons,</span></span><br><span class="line"><span class="comment">                    org.apache.tomcat.embed,</span></span><br><span class="line"><span class="comment">                    org.hibernate,</span></span><br><span class="line"><span class="comment">                    org.slf4j,</span></span><br><span class="line"><span class="comment">                    com.jayway,</span></span><br><span class="line"><span class="comment">                    org.jboss,</span></span><br><span class="line"><span class="comment">                    com.alibaba,</span></span><br><span class="line"><span class="comment">                    com.fasterxml,</span></span><br><span class="line"><span class="comment">                    commons-collections,</span></span><br><span class="line"><span class="comment">                    ch.qos.logback,</span></span><br><span class="line"><span class="comment">                    org.scala-lang,</span></span><br><span class="line"><span class="comment">                    org.yaml,</span></span><br><span class="line"><span class="comment">                    org.jboss.logging,</span></span><br><span class="line"><span class="comment">                    javax.validation,</span></span><br><span class="line"><span class="comment">                    nz.net.ultraq.thymeleaf,</span></span><br><span class="line"><span class="comment">                    org.thymeleaf,</span></span><br><span class="line"><span class="comment">                    ognl,</span></span><br><span class="line"><span class="comment">                    org.unbescape,</span></span><br><span class="line"><span class="comment">                    org.javassist</span></span><br><span class="line"><span class="comment">                &lt;/excludeGroupIds&gt; --&gt;</span></span><br><span class="line">                <span class="tag">&lt;<span class="name">includes</span>&gt;</span></span><br><span class="line">                    <span class="tag">&lt;<span class="name">include</span>&gt;</span></span><br><span class="line">                        <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.nerve<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">                        <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>ht-cdn<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">                    <span class="tag">&lt;/<span class="name">include</span>&gt;</span></span><br><span class="line">                    <span class="tag">&lt;<span class="name">include</span>&gt;</span></span><br><span class="line">                        <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.nerve<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">                        <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>ht-domain<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">                    <span class="tag">&lt;/<span class="name">include</span>&gt;</span></span><br><span class="line">                    <span class="tag">&lt;<span class="name">include</span>&gt;</span></span><br><span class="line">                        <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.nerve<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">                        <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>ht-repository<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">                    <span class="tag">&lt;/<span class="name">include</span>&gt;</span></span><br><span class="line">                    <span class="tag">&lt;<span class="name">include</span>&gt;</span></span><br><span class="line">                        <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.nerve<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">                        <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>ht-service<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">                    <span class="tag">&lt;/<span class="name">include</span>&gt;</span></span><br><span class="line">                <span class="tag">&lt;/<span class="name">includes</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">plugins</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">build</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>此时打包好的<code>ht-ui-web.jar</code>只有117kb这样<br><img src="https://nerve-images.oss-cn-shenzhen.aliyuncs.com/github-blog/spring-boot-iterative-release/20170107132421135.png" alt="这里写图片描述"></p>
+<p>BOOT-INF/lib下只有<code>ht</code>相关的jar<br><img src="https://nerve-images.oss-cn-shenzhen.aliyuncs.com/github-blog/spring-boot-iterative-release/20170107132617667.png" alt="这里写图片描述"></p>
+<h2 id="运行"><a href="#运行" class="headerlink" title="运行"></a>运行</h2><p>由于没有其他依赖，<code>ht-ui-web.jar</code>是不能如期运行起来的</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">java -jar ht-ui-web-1.0.jar</span><br><span class="line">Exception in thread &quot;main&quot; java.lang.reflect.InvocationTargetException</span><br><span class="line">        at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)</span><br><span class="line">        at sun.reflect.NativeMethodAccessorImpl.invoke(Unknown Source)</span><br><span class="line">        at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)</span><br><span class="line">        at java.lang.reflect.Method.invoke(Unknown Source)</span><br><span class="line">        at org.springframework.boot.loader.MainMethodRunner.run(MainMethodRunner.java:48)</span><br><span class="line">        at org.springframework.boot.loader.Launcher.launch(Launcher.java:87)</span><br><span class="line">        at org.springframework.boot.loader.Launcher.launch(Launcher.java:50)</span><br><span class="line">        at org.springframework.boot.loader.PropertiesLauncher.main(PropertiesLauncher.java:521)</span><br><span class="line">Caused by: java.lang.NoClassDefFoundError: org/springframework/boot/SpringApplication</span><br><span class="line">        at com.nerve.huotong.web.WebApplication.main(WebApplication.java:21)</span><br><span class="line">        ... 8 more</span><br><span class="line">Caused by: java.lang.ClassNotFoundException: org.springframework.boot.SpringApplication</span><br><span class="line">        at java.net.URLClassLoader.findClass(Unknown Source)</span><br><span class="line">        at java.lang.ClassLoader.loadClass(Unknown Source)</span><br><span class="line">        at org.springframework.boot.loader.LaunchedURLClassLoader.loadClass(LaunchedURLClassLoader.java:94)</span><br><span class="line">        at java.lang.ClassLoader.loadClass(Unknown Source)</span><br><span class="line">        ... 9 more</span><br></pre></td></tr></table></figure>
+<p>至此我们要设置<code>LOADER_PATH</code>，如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -Dloader.path=libs -jar ht-ui-web.jar</span><br></pre></td></tr></table></figure>
+<p>便可以看到熟悉的Spring Boot 启动信息了。</p>
+<h1 id="继续瘦身"><a href="#继续瘦身" class="headerlink" title="继续瘦身"></a>继续瘦身</h1><p>上面的项目结构介绍提到了<code>ht-cdn</code>，我是把前端用到的库都放在这里。然后单独启动一个Web Application。其他项目需要用到静态资源就直接使用。</p>
+<p>还有另外一个做法是，把<code>resources/public</code>直接丢到<code>libs</code>下（就是跟上一步剥离出来的jar包放在一起），结构如下：</p>
+<p><img src="https://nerve-images.oss-cn-shenzhen.aliyuncs.com/github-blog/spring-boot-iterative-release/20170107154426390.png" alt="这里写图片描述"></p>
+<p>这样也是可以的（不过要注意不能跟真实项目中自己写的静态资源重名）。</p>
+<h1 id="结语"><a href="#结语" class="headerlink" title="结语"></a>结语</h1><p>经过上面的瘦身，每次迭代开发开的Jar包就显得苗条多了。</p>
+<hr>
+<p>插些题外话</p>
+<p><strong>Spring Boot 中的 banner.txt</strong></p>
+<p>banner是spring boot 应用启动时打印在控制台的彩蛋信息，默认是这样的</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">  .   ____          _            __ _ _</span><br><span class="line"> /\\ / ___&apos;_ __ _ _(_)_ __  __ _ \ \ \ \</span><br><span class="line">( ( )\___ | &apos;_ | &apos;_| | &apos;_ \/ _` | \ \ \ \</span><br><span class="line"> \\/  ___)| |_)| | | | | || (_| |  ) ) ) )</span><br><span class="line">  &apos;  |____| .__|_| |_|_| |_\__, | / / / /</span><br><span class="line"> =========|_|==============|___/=/_/_/_/</span><br><span class="line"> :: Spring Boot ::        (v1.4.3.RELEASE)</span><br></pre></td></tr></table></figure>
+<p>想要修改这个文本的话，只需要在<code>resources</code>下新建<code>banner.txt</code>即可。这里可以自定义banner：<a href="http://patorjk.com/software/taag" target="_blank" rel="noopener">http://patorjk.com/software/taag</a></p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/SpringBoot/" rel="tag"># SpringBoot</a>
+          
+            <a href="/tags/Release/" rel="tag"># Release</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">0604hx</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">posts</span>
+                  </a>
+                </div>
+              
+
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">2</span>
+                    <span class="site-state-item-name">tags</span>
+                  
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#项目简介"><span class="nav-number">1.</span> <span class="nav-text">项目简介</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#瘦身准备"><span class="nav-number">2.</span> <span class="nav-text">瘦身准备</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#具体步骤"><span class="nav-number">3.</span> <span class="nav-text">具体步骤</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#打包时瘦身"><span class="nav-number">3.1.</span> <span class="nav-text">打包时瘦身</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#运行"><span class="nav-number">3.2.</span> <span class="nav-text">运行</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#继续瘦身"><span class="nav-number">4.</span> <span class="nav-text">继续瘦身</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#结语"><span class="nav-number">5.</span> <span class="nav-text">结语</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">0604hx</span>
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-area-chart"></i>
+    </span>
+    
+    <span title="Symbols count total">6k</span>
+  
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    
+    <span title="Reading time total">5 mins.</span>
+  
+</div>
+
+
+
+
+  <div class="powered-by">Powered by <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> v3.7.1</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://theme-next.org">NexT.Gemini</a> v6.3.0</div>
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv" title="Total Visitors">
+      <i class="fa fa-user"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+    </span>
+  
+
+  
+    <span class="site-pv" title="Total Views">
+      <i class="fa fa-eye"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/reading_progress/reading_progress.js"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.3.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.3.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.3.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.3.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.3.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.3.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.3.0"></script>
+
+
+
+  
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
